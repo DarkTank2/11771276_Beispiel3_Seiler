@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"cashregister"},{"l":"cashregister.ui"},{"l":"container"},{"l":"managementserver"},{"l":"managementtools"},{"l":"paymentprovider"},{"l":"rbvs.copy"},{"l":"rbvs.product"},{"l":"rbvs.record"},{"l":"tree"},{"l":"tree.node"},{"l":"util"},{"l":"util.searchable"},{"l":"warehouse"},{"l":"warehouse.ui"}]
