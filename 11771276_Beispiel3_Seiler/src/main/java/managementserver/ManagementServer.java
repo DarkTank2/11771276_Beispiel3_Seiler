@@ -16,9 +16,10 @@ import tree.ITree;
 import tree.GenericTree;
 import container.Container;
 import tree.node.*;
+import warehouse.IWarehouseListener;
 import rbvs.product.*;
 
-public class ManagementServer implements ISubjectManagementServer, IManagementServer {
+public class ManagementServer implements ISubjectManagementServer, IManagementServer, IWarehouseListener {
 
 	private static ManagementServer INSTANCE = null;
 	private Collection<ICashRegister> cashRegisters;
@@ -40,6 +41,15 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	public static IManagementServer GET_INSTANCE() {
 		if (INSTANCE == null) new ManagementServer();
 		return INSTANCE;
+	}
+	
+	public void addCashRegister​(ICashRegister cashRegister) {
+		if (cashRegister == null) return;
+		this.cashRegisters.add(cashRegister);
+		if (cashRegister instanceof IObserver) {
+			this.observer.add((IObserver) cashRegister);
+			((IObserver) cashRegister).notifyChange(this);
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -113,6 +123,26 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 
 	@Override
 	public void unregisterCashRegister(ICashRegister cashRegister) throws NotRegisteredException {
+		// TODO Auto-generated method stub
+		if (cashRegister == null) return;
+		if (!this.cashRegisters.contains(cashRegister)) throw new NotRegisteredException();
+		this.cashRegisters.remove(cashRegister);
+	}
+
+	@Override
+	public void notifyChange(IProduct product) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void productAdded(IProduct product) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void productRemoved(IProduct product) {
 		// TODO Auto-generated method stub
 		
 	}
