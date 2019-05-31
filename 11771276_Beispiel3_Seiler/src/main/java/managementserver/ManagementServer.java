@@ -125,7 +125,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	public void unregisterCashRegister(ICashRegister cashRegister) throws NotRegisteredException {
 		// TODO Auto-generated method stub
 		if (cashRegister == null) return;
-		if (!this.cashRegisters.contains(cashRegister)) throw new NotRegisteredException();
+		if (!this.cashRegisters.contains(cashRegister)) throw new NotRegisteredException("CashRegister is not registered!");
 		this.cashRegisters.remove(cashRegister);
 	}
 
