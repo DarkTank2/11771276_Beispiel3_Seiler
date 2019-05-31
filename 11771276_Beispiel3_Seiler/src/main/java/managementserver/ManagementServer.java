@@ -47,8 +47,10 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 		if (cashRegister == null) return;
 		this.cashRegisters.add(cashRegister);
 		if (cashRegister instanceof IObserver) {
-			this.observer.add((IObserver) cashRegister);
+			((IObserver) cashRegister).activateNotifications(this);
 			((IObserver) cashRegister).notifyChange(this);
+			if (this.observer.contains((IObserver) cashRegister)) return;
+			this.observer.add((IObserver) cashRegister);
 		}
 	}
 	
@@ -127,6 +129,13 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 		if (cashRegister == null) return;
 		if (!this.cashRegisters.contains(cashRegister)) throw new NotRegisteredException("CashRegister is not registered!");
 		this.cashRegisters.remove(cashRegister);
+		if (cashRegister instanceof IObserver) {
+			IObserver tmp = (IObserver) cashRegister;
+			if (this.observer.contains(tmp)) {
+				this.observer.remove(tmp);
+				tmp.deactivateNotifications(this);
+			}
+		}
 	}
 
 	@Override
