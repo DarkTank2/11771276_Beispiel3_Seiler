@@ -7,6 +7,7 @@
 package cashregister;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,12 +18,15 @@ import paymentprovider.IPayment;
 import rbvs.product.IProduct;
 import rbvs.product.IShoppingCartElement;
 import rbvs.product.Product;
+import rbvs.product.SimpleProduct;
 import rbvs.record.IInvoice;
 import rbvs.record.Invoice;
 import rbvs.record.PaymentTransaction;
 import tree.ITree;
 import tree.ProductTree;
+import tree.node.ITreeNode;
 import util.Tuple;
+import util.searchable.ProductNameFilter;
 
 /**
  * @author darkt
@@ -190,7 +194,12 @@ public class CashRegister implements IObserver, ICashRegister {
 	 */
 	@Override
 	public IShoppingCartElement selectProduct(String product) {
+		if (product == null) return null;
 		// TODO Auto-generated method stub
+		Collection<ITreeNode<IProduct>> l = this.products.searchByFilter(new ProductNameFilter(), product);
+		if (l.size() == 0) return null;
+		Iterator<ITreeNode<IProduct>> itr = l.iterator();
+		if(itr.hasNext()) return (Product) itr.next().nodeValue();
 		return null;
 	}
 
@@ -199,8 +208,11 @@ public class CashRegister implements IObserver, ICashRegister {
 	 */
 	@Override
 	public IShoppingCartElement selectProduct(Product product) {
+		if (product == null) return null;
 		// TODO Auto-generated method stub
-		return null;
+		ITreeNode<IProduct> tmp = this.products.findNode(product);
+		if (tmp == null) return null;
+		return (Product) tmp.nodeValue();
 	}
 
 	/* (non-Javadoc)
@@ -218,8 +230,14 @@ public class CashRegister implements IObserver, ICashRegister {
 	 */
 	@Override
 	public void activateNotifications(ISubjectManagementServer subject) {
+		if (subject == null) return;
 		// TODO Auto-generated method stub
-
+		List<Tuple<ISubjectManagementServer, Boolean>> l = this.subjects
+				.stream()
+				.filter(el -> el.getValueA().equals(subject))
+				.collect(Collectors.toList());
+		if (l.size() == 0) return;
+		l.get(0).setValueB(true);
 	}
 
 	/* (non-Javadoc)
@@ -227,8 +245,14 @@ public class CashRegister implements IObserver, ICashRegister {
 	 */
 	@Override
 	public void deactivateNotifications(ISubjectManagementServer subject) {
+		if (subject == null) return;
 		// TODO Auto-generated method stub
-
+		List<Tuple<ISubjectManagementServer, Boolean>> l = this.subjects
+				.stream()
+				.filter(el -> el.getValueA().equals(subject))
+				.collect(Collectors.toList());
+		if (l.size() == 0) return;
+		l.get(0).setValueB(false);
 	}
 
 	/* (non-Javadoc)
@@ -240,7 +264,7 @@ public class CashRegister implements IObserver, ICashRegister {
 		if (subject == null) return;
 		Tuple<ISubjectManagementServer, Boolean> tmp = this.subjects.stream().filter(el -> el.valueA.equals(subject)).collect(Collectors.toList()).get(0);
 		if (tmp == null) return;
-		if (tmp.getValueB()) this.products = subject.getChanges(); // not sure if this is the right way since the tree gets overwritten by the changes and not adapted
+		if (tmp.getValueB().booleanValue()) this.products = subject.getChanges(); // not sure if this is the right way since the tree gets overwritten by the changes and not adapted
 	}
 
 }
