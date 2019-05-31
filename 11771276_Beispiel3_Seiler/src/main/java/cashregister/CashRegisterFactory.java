@@ -12,4 +12,13 @@ package cashregister;
  */
 public class CashRegisterFactory {
 
+	private static long CASH_REGISTER_ID;
+	
+	public CashRegisterFactory() {
+		CashRegisterFactory.CASH_REGISTER_ID = 0;
+	}
+	
+	public static ICashRegister createCashRegister() {
+		return new CashRegister(++CashRegisterFactory.CASH_REGISTER_ID);
+	}
 }
