@@ -7,6 +7,8 @@
 package managementserver;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import cashregister.ICashRegister;
 import cashregister.IObserver;
@@ -60,7 +62,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	@Override
 	public ITree<IProduct> getChanges() {
 		// TODO Auto-generated method stub
-		return null;
+		return this.productAssortment.deepCopy();
 	}
 
 	/* (non-Javadoc)
@@ -68,8 +70,14 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	 */
 	@Override
 	public boolean register(IObserver obs) {
+//		see flowchart of Notification_IObserver.jpg
+		if (obs == null) return false;
 		// TODO Auto-generated method stub
-		return false;
+		obs.activateNotifications(this);
+		obs.notifyChange(this);
+		// if (!this.observer.contains(obs)) this.observer.add(obs);
+//		nifty little line, used conditional allocation
+		return this.observer.contains(obs) ? false : this.observer.add(obs);
 	}
 
 	/* (non-Javadoc)
@@ -77,8 +85,11 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	 */
 	@Override
 	public boolean unregister(IObserver obs) {
+//		see flowchart of Notification_IObserver.jpg
+		if (obs == null) return false;
 		// TODO Auto-generated method stub
-		return false;
+		obs.deactivateNotifications(this);
+		return this.observer.contains(obs) ? this.observer.remove(obs) : false;
 	}
 
 	/* (non-Javadoc)
@@ -86,8 +97,13 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	 */
 	@Override
 	public void addCashRegister(ICashRegister cashRegister) {
+		if (cashRegister == null) return;
 		// TODO Auto-generated method stub
-
+		this.cashRegisters.add(cashRegister);
+		if (cashRegister instanceof IObserver) {
+			this.observer.add((IObserver) cashRegister);
+			((IObserver) cashRegister).notifyChange(this);
+		}
 	}
 
 	/* (non-Javadoc)
@@ -96,7 +112,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	@Override
 	public void propagateProducts() {
 		// TODO Auto-generated method stub
-
+		this.observer.forEach(obs -> obs.notifyChange(this));
 	}
 
 	/* (non-Javadoc)
@@ -105,7 +121,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	@Override
 	public ITree<IProduct> retrieveProductSortiment() {
 		// TODO Auto-generated method stub
-		return null;
+		return this.productAssortment.deepCopy();
 	}
 
 	/* (non-Javadoc)
@@ -114,13 +130,18 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 	@Override
 	public Collection<ICashRegister> retrieveRegisteredCashRegisters() {
 		// TODO Auto-generated method stub
-		return null;
+		return this.cashRegisters;
 	}
 
 	@Override
 	public ICashRegister retrieveRegisteredCashRegister(Long cashRegisterId) throws NotRegisteredException {
 		// TODO Auto-generated method stub
-		return null;
+		List<ICashRegister> l = this.cashRegisters
+				.stream()
+				.filter(el -> el.getID() == cashRegisterId)
+				.collect(Collectors.toList());
+		if (l.size() == 0) throw new NotRegisteredException("Cash-Register with ID '" + cashRegisterId + "' is not registered at the Management-Server!");
+		return l.get(0);
 	}
 
 	@Override
@@ -140,20 +161,51 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 
 	@Override
 	public void notifyChange(IProduct product) {
+		if (product == null) return;
 		// TODO Auto-generated method stub
+		// strategy:
+			// find all nodes as a collection (method to return a collection of nodes, recurseively)
+			// update the node
+			// if product has changed category, delete it from the direct child of the category node and add it to the new category
+			// if the product is a composite-product, check its children against the existing node's children and also update them if neccessary
 		
 	}
 
 	@Override
 	public void productAdded(IProduct product) {
+		if (product == null) return;
 		// TODO Auto-generated method stub
+		switch (product.getCategory()) {
+		case FOOD:
+			this.productAssortment
+				.findNode(new ProductCategoryTreeNode<IProduct>(ProductCategory.FOOD))
+				.getChildren()
+				.add(new ProductTreeNode(product));
+			break;
+		case BEVERAGE:
+			this.productAssortment
+				.findNode(new ProductCategoryTreeNode<IProduct>(ProductCategory.BEVERAGE))
+				.getChildren()
+				.add(new ProductTreeNode(product));
+			break;
+		default:
+			this.productAssortment
+				.findNode(new ProductCategoryTreeNode<IProduct>(ProductCategory.DEFAULT))
+				.getChildren()
+				.add(new ProductTreeNode(product));
+			break;
 		
+		}
 	}
 
 	@Override
 	public void productRemoved(IProduct product) {
+		if (product == null) return;
 		// TODO Auto-generated method stub
-		
+		this.productAssortment.removeNode(product);
+//		ensure that all products that match the passed product are deleted
+		if (this.productAssortment.findNode(product) != null) this.productRemoved(product);
+		return;
 	}
 
 }
