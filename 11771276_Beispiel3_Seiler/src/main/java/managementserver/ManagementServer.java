@@ -13,11 +13,12 @@ import java.util.stream.Collectors;
 import cashregister.ICashRegister;
 import cashregister.IObserver;
 import cashregister.NotRegisteredException;
-import rbvs.product.IProduct;
 import tree.ITree;
 import tree.GenericTree;
 import container.Container;
 import tree.node.*;
+import util.searchable.ProductCategoryNodeFilter;
+import util.searchable.ProductNameFilter;
 import warehouse.IWarehouseListener;
 import rbvs.product.*;
 
@@ -102,6 +103,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 		this.cashRegisters.add(cashRegister);
 		if (cashRegister instanceof IObserver) {
 			this.observer.add((IObserver) cashRegister);
+			((IObserver) cashRegister).activateNotifications(this);
 			((IObserver) cashRegister).notifyChange(this);
 		}
 	}
@@ -168,7 +170,81 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 			// update the node
 			// if product has changed category, delete it from the direct child of the category node and add it to the new category
 			// if the product is a composite-product, check its children against the existing node's children and also update them if neccessary
+		IProduct tmp = this.productAssortment.findNode(product).nodeValue();
+		if (product.getCategory() != tmp.getCategory()) {
+			// shift product from immediate child to the right category
+			
+			// remove from the current category
+			switch (tmp.getCategory()) {
+			case FOOD:
+				this.productAssortment
+					.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.FOOD)
+					.iterator()
+					.next()
+					.removeNodeByValue(product);
+				break;
+			case BEVERAGE:
+				this.productAssortment
+					.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.BEVERAGE)
+					.iterator()
+					.next()
+					.removeNodeByValue(product);
+				break;
+			case DEFAULT:
+				this.productAssortment
+					.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.DEFAULT)
+					.iterator()
+					.next()
+					.removeNodeByValue(product);
+				break;
+			default:
+				break;
+			}
+			
+			// add to new category
+			switch (product.getCategory()) {
+			case FOOD:
+				this.productAssortment
+					.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.FOOD)
+					.iterator()
+					.next()
+					.getChildren()
+					.add(new ProductTreeNode(product));
+				break;
+			case BEVERAGE:
+				this.productAssortment
+					.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.BEVERAGE)
+					.iterator()
+					.next()
+					.getChildren()
+					.add(new ProductTreeNode(product));
+				break;
+			default:
+				this.productAssortment
+					.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.DEFAULT)
+					.iterator()
+					.next()
+					.getChildren()
+					.add(new ProductTreeNode(product));
+				break;
+			}
+		}
 		
+		// get collection of all matching nodes
+		Collection<ITreeNode<IProduct>> l = this.productAssortment.getRoot().searchByFilter(new ProductNameFilter(), product);
+		l.forEach(el -> {
+			// update each product
+			el.nodeValue().update(product);
+			// if the product is a CompositeProduct
+			if (product instanceof CompositeProduct) {
+				((CompositeProduct) product).getProducts().forEach(prod -> {
+					// check each product contained in the compositeproduct passed to exist in each node
+					if (!((CompositeProduct) el.nodeValue()).getProducts().contains(prod)) {
+						((CompositeProduct) el.nodeValue()).getProducts().add(prod);
+					}
+				});
+			}
+		});
 	}
 
 	@Override
@@ -178,19 +254,25 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 		switch (product.getCategory()) {
 		case FOOD:
 			this.productAssortment
-				.findNode(new ProductCategoryTreeNode<IProduct>(ProductCategory.FOOD))
+				.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.FOOD)
+				.iterator()
+				.next()
 				.getChildren()
 				.add(new ProductTreeNode(product));
 			break;
 		case BEVERAGE:
 			this.productAssortment
-				.findNode(new ProductCategoryTreeNode<IProduct>(ProductCategory.BEVERAGE))
+				.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.BEVERAGE)
+				.iterator()
+				.next()
 				.getChildren()
 				.add(new ProductTreeNode(product));
 			break;
 		default:
 			this.productAssortment
-				.findNode(new ProductCategoryTreeNode<IProduct>(ProductCategory.DEFAULT))
+				.searchByFilter(new ProductCategoryNodeFilter(), ProductCategory.DEFAULT)
+				.iterator()
+				.next()
 				.getChildren()
 				.add(new ProductTreeNode(product));
 			break;

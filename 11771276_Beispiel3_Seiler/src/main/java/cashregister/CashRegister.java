@@ -236,7 +236,10 @@ public class CashRegister implements IObserver, ICashRegister {
 				.stream()
 				.filter(el -> el.getValueA().equals(subject))
 				.collect(Collectors.toList());
-		if (l.size() == 0) return;
+		if (l.size() == 0) {
+			this.subjects.add(new Tuple<ISubjectManagementServer, Boolean>(subject, true));
+			return;
+		}
 		l.get(0).setValueB(true);
 	}
 
@@ -262,7 +265,9 @@ public class CashRegister implements IObserver, ICashRegister {
 	public void notifyChange(ISubjectManagementServer subject) {
 		// TODO Auto-generated method stub
 		if (subject == null) return;
-		Tuple<ISubjectManagementServer, Boolean> tmp = this.subjects.stream().filter(el -> el.valueA.equals(subject)).collect(Collectors.toList()).get(0);
+		List<Tuple<ISubjectManagementServer, Boolean>> l = this.subjects.stream().filter(el -> el.valueA.equals(subject)).collect(Collectors.toList());
+		if (l.size() == 0) return;
+		Tuple<ISubjectManagementServer, Boolean> tmp = l.get(0);
 		if (tmp == null) return;
 		if (tmp.getValueB().booleanValue()) this.products = subject.getChanges(); // not sure if this is the right way since the tree gets overwritten by the changes and not adapted
 	}
