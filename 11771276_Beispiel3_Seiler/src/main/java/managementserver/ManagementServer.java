@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import cashregister.CashRegister;
 import cashregister.ICashRegister;
 import cashregister.IObserver;
 import cashregister.NotRegisteredException;
@@ -101,6 +102,9 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 		if (cashRegister == null) return;
 		// TODO Auto-generated method stub
 		this.cashRegisters.add(cashRegister);
+		
+		if (cashRegister instanceof CashRegister) ((CashRegister) cashRegister).readFromXML(this);
+		
 		if (cashRegister instanceof IObserver) {
 			this.observer.add((IObserver) cashRegister);
 			((IObserver) cashRegister).activateNotifications(this);
@@ -239,12 +243,22 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 			if (product instanceof CompositeProduct) {
 				((CompositeProduct) product).getProducts().forEach(prod -> {
 					// check each product contained in the compositeproduct passed to exist in each node
+					
+					// first check node and its children
+					Collection<ITreeNode<IProduct>> list = el.searchByFilter(new ProductNameFilter(), prod);
+					if (list.isEmpty()) {
+						// add product to children since it is not registered there
+						el.getChildren().add(new ProductTreeNode(prod));
+					}
+					
+					// then check product and its products
 					if (!((CompositeProduct) el.nodeValue()).getProducts().contains(prod)) {
 						((CompositeProduct) el.nodeValue()).getProducts().add(prod);
 					}
 				});
 			}
 		});
+		this.propagateProducts();
 	}
 
 	@Override
@@ -278,6 +292,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 			break;
 		
 		}
+		this.propagateProducts();
 	}
 
 	@Override
@@ -287,6 +302,7 @@ public class ManagementServer implements ISubjectManagementServer, IManagementSe
 		this.productAssortment.removeNode(product);
 //		ensure that all products that match the passed product are deleted
 		if (this.productAssortment.findNode(product) != null) this.productRemoved(product);
+		this.propagateProducts();
 		return;
 	}
 

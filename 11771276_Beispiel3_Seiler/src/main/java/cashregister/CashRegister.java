@@ -6,19 +6,22 @@
  */
 package cashregister;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.xml.bind.*;
+
 import cashregister.ui.ICashRegisterUI;
 import container.Container;
+import managementserver.IManagementServer;
 import managementserver.ISubjectManagementServer;
 import paymentprovider.IPayment;
 import rbvs.product.IProduct;
 import rbvs.product.IShoppingCartElement;
 import rbvs.product.Product;
-import rbvs.product.SimpleProduct;
 import rbvs.record.IInvoice;
 import rbvs.record.Invoice;
 import rbvs.record.PaymentTransaction;
@@ -27,6 +30,9 @@ import tree.ProductTree;
 import tree.node.ITreeNode;
 import util.Tuple;
 import util.searchable.ProductNameFilter;
+import xml.CashRegisterPOJO;
+import xml.ProductPOJO;
+import xml.ShoppingCartPOJO;
 
 /**
  * @author darkt
@@ -74,6 +80,7 @@ public class CashRegister implements IObserver, ICashRegister {
 //		but just in case there are more than one shopping carts with this id, ad the element to all of them
 		l.stream().forEach(el -> el.addElement(arg1.deepCopy()));
 		// TODO Auto-generated method stub
+		this.saveXML();
 		return true;
 	}
 
@@ -86,6 +93,7 @@ public class CashRegister implements IObserver, ICashRegister {
 		IShoppingCart tmp = new ShoppingCart(counter);
 		++counter;
 		this.shoppingCarts.add(tmp);
+		this.saveXML();
 		return tmp.getShoppingCartID();
 	}
 
@@ -171,12 +179,14 @@ public class CashRegister implements IObserver, ICashRegister {
 		this.records.add(inv);
 		// removes each element from the shopping cart
 		l.get(0).currentElements().stream().forEach(el -> l.get(0).removeElement(el));
+		this.saveXML();
 		return inv;
 	}
 	
 	protected IShoppingCart findShoppingCartById(long id) {
 		// this shall work even if there is no cart with given id since the list then shall be empty and so the zero-indexed element will be NULL
-		return this.shoppingCarts.stream().filter(el -> el.getShoppingCartID() == id).collect(Collectors.toList()).get(0);
+		List<IShoppingCart> l = this.shoppingCarts.stream().filter(el -> el.getShoppingCartID() == id).collect(Collectors.toList());
+		return l.size() > 0 ? l.get(0) : null;
 	}
 
 	/* (non-Javadoc)
@@ -270,6 +280,68 @@ public class CashRegister implements IObserver, ICashRegister {
 		Tuple<ISubjectManagementServer, Boolean> tmp = l.get(0);
 		if (tmp == null) return;
 		if (tmp.getValueB().booleanValue()) this.products = subject.getChanges(); // not sure if this is the right way since the tree gets overwritten by the changes and not adapted
+		this.saveXML();
+	}
+	
+	private void saveXML () {
+		try {
+			// create JAXB context and marshaller
+			JAXBContext c = JAXBContext.newInstance(CashRegisterPOJO.class, ShoppingCartPOJO.class, ProductPOJO.class);
+			Marshaller m = c.createMarshaller();
+			m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+			// create structure from separate POJO's
+			CashRegisterPOJO p = new CashRegisterPOJO(this.getShoppingCarts());
+			// write the file
+			m.marshal(p, new File("./cr_backup_[" + this.id + "].xml"));
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void readFromXML(IManagementServer mgnSrv) {
+		try {
+			// create context and unmarshaller
+			JAXBContext c = JAXBContext.newInstance(CashRegisterPOJO.class, ShoppingCartPOJO.class, ProductPOJO.class);
+			Unmarshaller u = c.createUnmarshaller();
+			// read from file
+			CashRegisterPOJO p = (CashRegisterPOJO) u.unmarshal(new File("./cr_backup_[" + this.id + "].xml"));
+			// if succeeded, get products for comparison
+			this.products = mgnSrv.retrieveProductSortiment();
+			// get carts
+			Collection<ShoppingCartPOJO> cartPojos = p.getShoppingCarts();
+			if (cartPojos != null) {
+				// if at least one exists
+				cartPojos.forEach(cart -> {
+					// check if a cart with this id already exists in this cash register, otherwise add it
+					// final because later on the lambda-exp. needs a final one, hence the complicated workaround
+					final IShoppingCart tmpCart = this.findShoppingCartById(cart.getId()) == null
+							? ShoppingCartFactory.createShoppingCart(cart.getId())
+							: this.findShoppingCartById(cart.getId());
+					if (this.findShoppingCartById(cart.getId()) == null) {
+						this.shoppingCarts.add(tmpCart);
+					}
+					
+					// get the list of products of the cart
+					Collection<ProductPOJO> prodPojos = cart.getShoppingCartProducts();
+					if (prodPojos != null) {
+						// if there is at least one
+						prodPojos.forEach(product -> {
+							// search in the retrieved list of products for a product with same name
+							Collection<ITreeNode<IProduct>> l = this.products.getRoot().searchByFilter(new ProductNameFilter(), product.getName());
+							if (l.size() > 0) {
+								// if it exists add it
+								tmpCart.addElement((IShoppingCartElement) l.iterator().next().nodeValue());
+							}
+						});
+					}
+				});
+			}
+		} catch (Exception e) {
+			// catch exception, e.g. file does not exist
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 }
