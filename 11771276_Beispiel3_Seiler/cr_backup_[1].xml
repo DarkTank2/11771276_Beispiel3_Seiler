@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cashRegisterPOJO>
+    <ShoppingCart CartIdentifier="0">
+        <CurrentProducts productName="Schokoladekeks"/>
+        <CurrentProducts productName="Schokoladekeks"/>
+        <CurrentProducts productName="Milch"/>
+    </ShoppingCart>
+    <ShoppingCart CartIdentifier="1">
+        <CurrentProducts productName="Palmöl"/>
+        <CurrentProducts productName="Palmöl"/>
+        <CurrentProducts productName="Palmöl"/>
+        <CurrentProducts productName="Schokolade"/>
+        <CurrentProducts productName="Schokolade"/>
+    </ShoppingCart>
+</cashRegisterPOJO>
